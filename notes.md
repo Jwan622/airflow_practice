@@ -253,7 +253,8 @@ The difference between these two is that if task2 is marked with `depends_on_pas
 
 **DagFolder structure**
 - `dags_folder` in airflow.cfg is where all dags are kept. by default, airflow will use path from `$AIRFLOW_HOME/dags`
-- use a zip. This is one way to combine dags with dependencies. Dags need to be at root level of zip file. Using zip files and pip, you can include module dependencies for your dags into the zip folder. the dependencies would be a zip folder as well.
+- use a zip. This is one way to combine dags with dependencies. Dags need to be at root level of zip file otherwise airflow cannot load them. If you urn airflow, you should see the dag from the zip file in your DAGS section of your airflow UI. Using zip files and pip, you can include module dependencies for your dags into the zip folder. the dependencies would be a zip folder as well.
 - or DagBag, a collection of DAGs parsed out of a folder tree and has high-level config settings. YOu can load your DAGs from different folders and not the one set by default. In order to use this feature, we need a special Python file.
+- one downside of DAGBag approach is that you cannot see errors in your UI. If you remove an import, the UI shows no error, but you have to check logs from server or docker container.
 - whatever you put in `.airflowignore` will be ignored by Airflow.
 - remember that `__init__.py` makes python treat directories as modules. It's also first file to be loaded so you can use it to execute code. You need this file to import functions from a file.
