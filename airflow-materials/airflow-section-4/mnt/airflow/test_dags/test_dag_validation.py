@@ -5,7 +5,7 @@ class TestDagValidation:
 
     LOAD_SECOND_THRESHOLD = 2
     REQUIRED_EMAIL = "owner@test.com"
-    EXPECTED_NUMBER_OF_DAGS = 7
+    EXPECTED_NUMBER_OF_DAGS = 9
 
     def test_import_dags(self, dagbag):
         """
@@ -32,7 +32,7 @@ class TestDagValidation:
             res
         )
 
-    @pytest.mark.skip(reason="not yet added to the DAGs")
+    #@pytest.mark.skip(reason="not yet added to the DAGs")
     def test_default_args_email(self, dagbag):
         """
             Verify that DAGs have the required email

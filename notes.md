@@ -247,7 +247,7 @@ this is what the code would look like:
 
 ![depends_on_code](images/chapter_4/depends_on_code.png)
 
-The difference between these two is that if task2 is marked with `depends_on_past=True` and task2 in a previous DAGRun failed, task2 does run in the next dagrun. 
+The difference between these two is that if task2 is marked with `depends_on_past=True` and task2 in a previous DAGRun failed, task2 does run in the next DAGRun. 
 - if task1 is marked as `wait_for_downstream=True` and task2 fails in a previous DAGRun, task1 does not run in the next DAGRun.G
 
 
@@ -258,3 +258,67 @@ The difference between these two is that if task2 is marked with `depends_on_pas
 - one downside of DAGBag approach is that you cannot see errors in your UI. If you remove an import, the UI shows no error, but you have to check logs from server or docker container.
 - whatever you put in `.airflowignore` will be ignored by Airflow.
 - remember that `__init__.py` makes python treat directories as modules. It's also first file to be loaded so you can use it to execute code. You need this file to import functions from a file.
+
+**Webserver**
+- from the CLI when we start a webserver, it actually starts a unicorn server using Flask. Unicorn is a python http server for unix based on pre-fork worker model. This models means there's a central master process that manages a set of forked worker processes.
+- the master process is a loop listening to process signals and reacts accordingly to manage a list of running workers. the workers process DAGs in the DAGs folder as well as handling requests and returning a response to the client. That's why if you go to the airflow.cfg file under the section webserver.
+- Unicorn has sync and async workers. default is sync meaning worker only handles 1 request at a time. This type of worker is used with application that doesn't need long Disk IO or external requests. Why? If the requests are too long, they block other requests and then they fail due ot the timeout time.
+- `worker_refresh_batch_size` parameter tells airflow how many workers to kill and restart periodically.
+- `worker_refresh_interval` defines time to wait before making refresh
+
+
+**How to deal with Failures**
+- Dag Level
+    - `dagrun_timeout` - how long a DAGRun should run for so that new DAGRuns can be created, only for scheduled DAGRuns.
+    - `max_active_runs` - max number of DAGRuns per DAG. If you trigger a DAG from the past
+    - `sla_miss_callback` - allows to  call a function when reporting SLA timeouts.
+    - `on_success_timeout` - calls function when DAGRuns succeeds. 
+    - `on_failure_timeout` - calls function when DAGRuns fails. 
+    
+- Task Level
+    - `email` - email address used for `email_on_retry` and `email_on_failure`
+    - `email_on_retry` - sends an email when retried.
+    - `retries` - number of retries before marking task as failed.
+    - `retry_delay` - delay between retries
+    - `on_success_callback` - function to run when task succeeds.
+    - `on_failure_callback` - function to run when task fails.
+
+- `dagrun_timeout` looks something like this: `dagrun_timeout=timedelta(seconds=25))` and if the dag takes longer, it fails.
+
+**Tests**
+- DAG validation tests tests to see if there are typos, if there are no cycles (so it won't terminate), default args are present.
+- DAG/Pipeline Definition tests- check not logic but number of tasks, nature of tasks, upstream and downstream of tasks
+- Unit tests, tests logic of tasks
+
+This allows us to access our dags in the dag folder:
+
+```python
+from airflow.models import DagBag
+
+@pytest.fixture(scope="session")
+def dagbag():
+    return DagBag()
+```
+- this function is run once per session.
+- in the test, you can then access the email prop for default args like this:
+
+```python
+    def test_default_args_email(self, dagbag):
+        """
+            Verify that DAGs have the required email
+            - Check email
+        """
+        for dag_id, dag in dagbag.dags.items():
+            emails = dag.default_args.get('email', [])
+            assert self.REQUIRED_EMAIL in emails, "The mail {0} for sending alerts is missing from the DAG {1}".format(self.REQUIRED_EMAIL, dag_id)
+```
+
+- DAG definition tests are related to one specific dag. That' why you would see something like this on top of test file:
+
+```python
+@pytest.fixture(scope="class")
+def dag(dagbag):
+    return dagbag.get_dag('tst_dag')
+```
+
+- 
